@@ -14,11 +14,13 @@ from bridge.context import ContextType
 from bridge.reply import Reply, ReplyType
 from common.log import logger
 
+
+
 @plugins.register(
     name="suno-to-cow",
-    desire_priority=2,
+    desire_priority=99,
     desc="A plugin for summarizing all things",
-    version="2.5.0",
+    version="2.0.0",
     author="Faer",
 )
 
