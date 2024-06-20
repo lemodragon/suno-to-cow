@@ -21,12 +21,13 @@ from plugins import *
     name="suno2cow",
     desire_priority=99,
     desc="A plugin for creat music and lyrics using oneapi.",
-    version="2.0.0",
+    version="2.1.0",
     author="Faer",
 )
 
-class SunoToCow(Plugin):
+class Suno2Cow(Plugin):
     def __init__(self):
+        super().__init__()  # 确保调用父类的初始化方法
         self.config = self.load_config()
         self.suno_api_base = self.config.get("suno_api_base", [])
         self.suno_api_token = self.config.get("suno_api_key", "")
@@ -37,6 +38,9 @@ class SunoToCow(Plugin):
         self.music_output_dir = self.config.get("music_output_dir", "/tmp")
         self.is_send_lyrics = self.config.get("is_send_lyrics", True)
         self.is_send_covers = self.config.get("is_send_covers", True)
+        self.handlers = {
+            'on_handle_context': self.handle_message  # 注册事件处理函数
+        }
 
         if not os.path.exists(self.music_output_dir):
             os.makedirs(self.music_output_dir)
@@ -188,16 +192,3 @@ class SunoToCow(Plugin):
             if elapsed_time > timeout:
                 logger.error(f"文件下载超时,file_url={file_url}")
                 break
-
-
-
-
-
-
-
-
-
-
-
-
-
