@@ -164,11 +164,11 @@ class Suno2Cow(Plugin):
             logger.error(f"Failed to generate lyrics: {response.status_code} - {response.text}")
 
     def _check_prefix(self, content, prefix_list):
-        for prefix in prefix_list:
-            pattern = r'^{}(?=\S)'.format(re.escape(prefix))
+    for prefix in prefix_list:
+        pattern = r'^{}(?=\S)'.format(re.escape(prefix))
         if re.search(pattern, content):
-                return prefix
-        return None
+            return prefix
+    return None
 
 
     def _download_file(self, file_url, file_path, retry_count=3, timeout=600):
