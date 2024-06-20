@@ -1,1 +1,1 @@
-from .suno_to_cow import *
+from .suno2cow import *
