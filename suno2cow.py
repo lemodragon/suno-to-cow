@@ -12,7 +12,7 @@ import os
     name="suno2cow",
     desire_priority=8,
     desc="A plugin for music bot to use suno2cow service",
-    version="2.2.0",
+    version="2.3.0",
     author="Fear",
 )
 class suno2cow(Plugin):
@@ -83,6 +83,11 @@ class suno2cow(Plugin):
                 if "message" in first_choice and "content" in first_choice["message"]:
                     response_content = first_choice["message"]["content"].strip()
                     reply_content = response_content.replace("\\n", "\n")
+
+                    # 新增: 删除包含大量🎵符号的行
+                    lines = reply_content.split('\n')
+                    new_lines = [line for line in lines if not line.strip().replace('🎵', '').strip() == '']
+                    reply_content = '\n'.join(new_lines)
             else:
                 reply_content = "Content not found or error in response"
 
