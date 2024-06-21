@@ -9,10 +9,10 @@ import os
 
 @plugins.register(
     name="suno2cow",
-    desire_priority=2,
-    desc="A plugin for summarizing all things",
-    version="0.7.8",
-    author="fatwang2",
+    desire_priority=8,
+    desc="A plugin for music bot to use suno2cow service",
+    version="2.2.0",
+    author="Fear",
 )
 class suno2cow(Plugin):
     def __init__(self):
@@ -32,7 +32,7 @@ class suno2cow(Plugin):
             self.handlers[Event.ON_HANDLE_CONTEXT] = self.on_handle_context
 
             self.suno2cow_key = self.config["keys"].get("open_ai_api_key", "")
-            self.model = self.config["keys"].get("model", "gpt-3.5-turbo")
+            self.model = self.config["keys"].get("model", "gpt-4o")
             self.open_ai_api_base = self.config["keys"].get("open_ai_api_base", "https://api.openai.com/v1")
 
             self.suno2cow_enabled = self.config["suno2cow"].get("enabled", False)
