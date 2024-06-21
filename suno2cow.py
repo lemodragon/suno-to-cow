@@ -13,7 +13,7 @@ import os
     name="suno2cow",
     desire_priority=8,
     desc="A plugin for music bot to use suno2cow service",
-    version="2.3.9",
+    version="2.4.0",
     author="Fear",
 )
 class suno2cow(Plugin):
@@ -109,13 +109,6 @@ class suno2cow(Plugin):
 
         max_retries = 2  # 设置重试次数
         retry_count = 0
-
-        # 监听到“唱”“奏”关键词时返回特定消息
-        reply = Reply()
-        reply.type = ReplyType.TEXT
-        reply.content = "\n正在加急创作中，预计3分钟，请耐心等待...."
-        e_context["reply"] = reply
-        e_context.action = EventAction.BREAK_PASS
 
         while retry_count < max_retries:
             try:
