@@ -1,3 +1,4 @@
+import plugins
 import requests
 import json
 from bridge.reply import Reply, ReplyType
