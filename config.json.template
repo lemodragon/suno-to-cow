@@ -1,0 +1,15 @@
+{
+  "suno2cow": {
+    "enabled": true,
+    "service": "openai",
+    "group": true,
+    "qa_enabled": true,
+    "qa_prefix": "唱",
+    "prompt": "你是一个具备创新精神的音乐专家，会根据用户发送的内容创作对应的作品,尽量使用emoji让你的表达更生动"
+  },
+  "keys": {
+    "open_ai_api_key": "",
+    "model": "suno-v3.5",
+    "open_ai_api_base": "https://your-api-base.com/v1"
+  }
+}
