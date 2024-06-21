@@ -1,194 +1,101 @@
 import requests
-import plugins
-import os
-import re
 import json
-import time
-import requests
-import datetime
-import threading
-
-from typing import List
-from pathvalidate import sanitize_filename
-from bridge.context import ContextType
 from bridge.reply import Reply, ReplyType
+from bridge.context import ContextType
 from channel.chat_message import ChatMessage
-from common.log import logger
-from config import conf
 from plugins import *
+from common.log import logger
+import os
 
 @plugins.register(
     name="suno2cow",
-    desire_priority=99,
-    desc="A plugin for creat music and lyrics using oneapi.",
-    version="2.1.0",
-    author="Faer",
+    desire_priority=2,
+    desc="A plugin for summarizing all things",
+    version="0.7.8",
+    author="fatwang2",
 )
-
-class Suno2Cow(Plugin):
+class suno2cow(Plugin):
     def __init__(self):
-        super().__init__()  # 确保调用父类的初始化方法
-        self.config = self.load_config()
-        self.suno_api_base = self.config.get("suno_api_base", [])
-        self.suno_api_token = self.config.get("suno_api_key", "")
-        self.model = self.config.get("model", "")
-        self.music_create_prefixes = self.config.get("music_create_prefixes", [])
-        self.instrumental_create_prefixes = self.config.get("instrumental_create_prefixes", [])
-        self.lyrics_create_prefixes = self.config.get("lyrics_create_prefixes", [])
-        self.music_output_dir = self.config.get("music_output_dir", "/tmp")
-        self.is_send_lyrics = self.config.get("is_send_lyrics", True)
-        self.is_send_covers = self.config.get("is_send_covers", True)
-        self.handlers = {
-            'on_handle_context': self.handle_message  # 注册事件处理函数
-        }
-
-        if not os.path.exists(self.music_output_dir):
-            os.makedirs(self.music_output_dir)
-
-    def load_config(self):
-        curdir = os.path.dirname(__file__)
-        config_path = os.path.join(curdir, "config.json")
+        super().__init__()
         try:
+            curdir = os.path.dirname(__file__)
+            config_path = os.path.join(curdir, "config.json")
             if os.path.exists(config_path):
                 with open(config_path, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                    self.config = json.load(f)
             else:
-                logger.warning("config.json not found, using default configuration.")
-                return {}
+                self.config = super().load_config()
+
+            if not self.config:
+                raise Exception("config.json not found")
+
+            self.handlers[Event.ON_HANDLE_CONTEXT] = self.on_handle_context
+
+            self.suno2cow_key = self.config["keys"].get("open_ai_api_key", "")
+            self.model = self.config["keys"].get("model", "gpt-3.5-turbo")
+            self.open_ai_api_base = self.config["keys"].get("open_ai_api_base", "https://api.openai.com/v1")
+
+            self.suno2cow_enabled = self.config["suno2cow"].get("enabled", False)
+            self.suno2cow_service = self.config["suno2cow"].get("service", "")
+            self.suno2cow_group = self.config["suno2cow"].get("group", True)
+            self.suno2cow_qa_prefix = self.config["suno2cow"].get("qa_prefix", "唱")
+            self.suno2cow_prompt = self.config["suno2cow"].get("prompt", "")
+
+            logger.info("[suno2cow] inited.")
         except Exception as e:
-            logger.error(f"Failed to load config: {e}")
-            return {}
+            logger.warn(f"suno2cow init failed: {e}")
 
-    def handle_message(self, context):
-        if context.type != ContextType.TEXT:
+    def on_handle_context(self, e_context: EventContext):
+        context = e_context["context"]
+        if context.type not in [ContextType.TEXT]:
             return
 
+        msg: ChatMessage = e_context["context"]["msg"]
         content = context.content
-        make_instrumental, make_lyrics = False, False
-        music_create_prefix = self._check_prefix(content, self.music_create_prefixes)
-        instrumental_create_prefix = self._check_prefix(content, self.instrumental_create_prefixes)
-        lyrics_create_prefix = self._check_prefix(content, self.lyrics_create_prefixes)
+        isgroup = e_context["context"].get("isgroup", False)
 
-        if music_create_prefix:
-            suno_prompt = content[len(music_create_prefix):].strip()
-        elif instrumental_create_prefix:
-            make_instrumental = True
-            suno_prompt = content[len(instrumental_create_prefix):].strip()
-        elif lyrics_create_prefix:
-            make_lyrics = True
-            suno_prompt = content[len(lyrics_create_prefix):].strip()
-        else:
-            return
-
-        if not suno_prompt:
-            return
-
-        if make_lyrics:
-            self._create_lyrics(context, suno_prompt)
-        else:
-            self._create_music(context, suno_prompt, make_instrumental)
-
-    def _create_music(self, context, suno_prompt, make_instrumental=False):
-        custom_mode = False
-        if '标题' in suno_prompt and '风格' in suno_prompt:
-            custom_mode = True
-            # 解析自定义模式输入
-            import re
-            regex_prompt = r' *标题[:：]?(?P<title>[\S ]*)\n+ *风格[:：]?(?P<tags>[\S ]*)(\n+(?P<lyrics>.*))?'
-            match = re.fullmatch(regex_prompt, suno_prompt, re.DOTALL)
-            if match:
-                title = match.group('title').strip()
-                tags = match.group('tags').strip()
-                lyrics = match.group('lyrics').strip()
-                payload = {
-                    "model": self.model,
-                    "title": title,
-                    "tags": tags,
-                    "lyrics": lyrics,
-                    "make_instrumental": make_instrumental
-                }
-            else:
-                logger.error("Invalid custom mode input format")
+        if content.startswith(self.suno2cow_qa_prefix) and self.suno2cow_enabled:
+            if isgroup and not self.suno2cow_group:
                 return
-        else:
-            # 描述模式
-            payload = {
-                "model": self.model,
-                "prompt": suno_prompt,
-                "make_instrumental": make_instrumental
-            }
+            self.call_service(content, e_context)
+            return
 
-        # 调用你自己的服务生成音乐
-        url = f"{self.suno_api_base}/generate_music"
+    def call_service(self, content, e_context):
         headers = {
-            "Authorization": f"Bearer {self.suno_api_token}",
-            "Content-Type": "application/json"
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.suno2cow_key}'
         }
-        response = requests.post(url, headers=headers, json=payload)
-        if response.status_code == 200:
-            data = response.json()
-            # 处理生成的音乐数据
-            music_url = data.get("music_url")
-            if music_url:
-                music_file_path = os.path.join(self.music_output_dir, sanitize_filename(data.get("title", "music")) + ".mp3")
-                self._download_file(music_url, music_file_path)
-                reply = Reply(ReplyType.AUDIO, music_file_path)
-                context.bot.send(reply)
-            else:
-                logger.error("Music URL not found in response")
-        else:
-            logger.error(f"Failed to generate music: {response.status_code} - {response.text}")
-
-    def _create_lyrics(self, context, suno_prompt):
-        # 调用你自己的服务生成歌词
-        url = f"{self.suno_api_base}/generate_lyrics"
-        headers = {
-            "Authorization": f"Bearer {self.suno_api_token}",
-            "Content-Type": "application/json"
-        }
-        payload = {
+        payload = json.dumps({
             "model": self.model,
-            "prompt": suno_prompt
-        }
-        response = requests.post(url, headers=headers, json=payload)
-        if response.status_code == 200:
-            data = response.json()
-            # 处理生成的歌词数据
-            lyrics = data.get("lyrics")
-            if lyrics:
-                reply = Reply(ReplyType.TEXT, lyrics)
-                context.bot.send(reply)
+            "messages": [
+                {"role": "system", "content": self.suno2cow_prompt},
+                {"role": "user", "content": content[len(self.suno2cow_qa_prefix):]}
+            ]
+        })
+        try:
+            api_url = f"{self.open_ai_api_base}/chat/completions"
+            response = requests.post(api_url, headers=headers, data=payload)
+            response.raise_for_status()
+            response_data = response.json()
+            if "choices" in response_data and len(response_data["choices"]) > 0:
+                first_choice = response_data["choices"][0]
+                if "message" in first_choice and "content" in first_choice["message"]:
+                    response_content = first_choice["message"]["content"].strip()
+                    reply_content = response_content.replace("\\n", "\n")
             else:
-                logger.error("Lyrics not found in response")
-        else:
-            logger.error(f"Failed to generate lyrics: {response.status_code} - {response.text}")
+                reply_content = "Content not found or error in response"
 
-    def _check_prefix(self, content, prefix_list):
-    for prefix in prefix_list:
-        pattern = r'^{}(?=\S)'.format(re.escape(prefix))
-        if re.search(pattern, content):
-            return prefix
-    return None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error calling new combined api: {e}")
+            reply_content = f"An error occurred"
 
+        reply = Reply()
+        reply.type = ReplyType.TEXT
+        reply.content = f"{remove_markdown(reply_content)}"
+        e_context["reply"] = reply
+        e_context.action = EventAction.BREAK_PASS
 
-    def _download_file(self, file_url, file_path, retry_count=3, timeout=600):
-        start_time = datetime.datetime.now()
-        while retry_count >= 0:
-            try:
-                response = requests.get(file_url, allow_redirects=True, stream=True)
-                if response.status_code != 200:
-                    raise Exception(f"文件下载失败，file_url={file_url}, status_code={response.status_code}")
-                with open(file_path, "wb") as f:
-                    for chunk in response.iter_content(chunk_size=1024):
-                        if chunk:
-                            f.write(chunk)
-            except Exception as e:
-                logger.error(f"文件下载失败，file_url={file_url}, error={e}")
-                retry_count -= 1
-                time.sleep(5)
-            else:
-                break
-            elapsed_time = (datetime.datetime.now() - start_time).total_seconds()
-            if elapsed_time > timeout:
-                logger.error(f"文件下载超时,file_url={file_url}")
-                break
+def remove_markdown(text):
+    text = text.replace("**", "")
+    text = text.replace("### ", "").replace("## ", "").replace("# ", "")
+    return text

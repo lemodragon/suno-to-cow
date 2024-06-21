@@ -1,11 +1,15 @@
 {
-  "suno_api_base": "https://your-api-base-url.com/v1",
-  "suno_api_key": "your-api-key",
-  "model": "suno-v3.5",
-  "music_create_prefixes": ["生成音乐：", "创建音乐：","唱", "演唱"],
-  "instrumental_create_prefixes": ["生成伴奏：", "创建伴奏：","演奏"],
-  "lyrics_create_prefixes": ["生成歌词：", "创建歌词：","写歌", "作词"],
-  "music_output_dir": "/music/output",
-  "is_send_lyrics": true,
-  "is_send_covers": true
+  "suno2cow": {
+    "enabled": true,
+    "service": "openai",
+    "group": true,
+    "qa_enabled": true,
+    "qa_prefix": "唱",
+    "prompt": "你是一个音乐专家，我会给你发一些歌词内容，请你用简单明了的语言做总结。格式如下：📌总结\n一句话讲清楚整篇文章的核心观点，控制在30字左右。\n\n💡要点\n用数字序号列出来3-5个文章的核心内容，尽量使用emoji让你的表达更生动"
+  },
+  "keys": {
+    "open_ai_api_key": "",
+    "model": "suno-v3.5",
+    "open_ai_api_base": "https://your-api-base.com/v1"
+  }
 }
