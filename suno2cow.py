@@ -44,7 +44,7 @@ class suno2cow(Plugin):
             self.suno2cow_prompt = self.config["suno2cow"].get("prompt", "")
 
             self.recent_queries = {}
-            self.cleanup_interval = 60 * 5  # 5分钟清理一次
+            self.cleanup_interval = 60 * 4  # 4分钟清理一次
             self.last_cleanup_time = time.time()
 
             logger.info("[suno2cow] inited.")
