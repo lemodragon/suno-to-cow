@@ -1,0 +1,14 @@
+{
+  "suno2cow": {
+    "enabled": true,
+    "service": "suno2cow",
+    "group": true,
+    "qa_prefix": ["唱", "奏"],
+    "prompt": "你是一个专业的歌词创作者。请根据用户的要求创作歌词。"
+  },
+  "keys": {
+    "open_ai_api_key": "your-api-key",
+    "model": "suno-v3.5",
+    "open_ai_api_base": "https://your-api-base.com/v1"
+  }
+}
